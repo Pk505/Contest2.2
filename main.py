@@ -1,3 +1,5 @@
+import queue
+
 class AddException(Exception):
     pass
 class SetException(Exception):
@@ -23,7 +25,8 @@ class Vertex:
     def __init__(self, key, value, parent):
         self.key = key
         self.value = value
-        self.index = 0
+        self.index = -1
+        self.level = -1
         self.is_visited = False
         self.left = None
         self.right = None
@@ -89,8 +92,6 @@ class DBT:
         self.root = root
         if self.root is not None:
             self.root.parent = None
-        self.table = []
-        self.is_table_passed = False
 
     def add(self, key, value):
         if self.root is None:
@@ -101,7 +102,7 @@ class DBT:
                 if key < current_vertex.key:
                     if current_vertex.left is None:
                         current_vertex.left = Vertex(key, value, current_vertex)
-                        current_vertex.left.is_visited = self.is_table_passed
+                        # current_vertex.left.is_visited = self.is_table_passed
                         self.splay(current_vertex.left)
                         break
                     else:
@@ -110,7 +111,7 @@ class DBT:
                 elif key > current_vertex.key:
                     if current_vertex.right is None:
                         current_vertex.right = Vertex(key, value, current_vertex)
-                        current_vertex.right.is_visited = self.is_table_passed
+                        # current_vertex.right.is_visited = self.is_table_passed
                         self.splay(current_vertex.right)
                         break
                     else:
@@ -142,19 +143,50 @@ class DBT:
         if self.root is None:
             output = '_'
         else:
+            self.give_indexes()
+            queue_vertices = queue.Queue()
+            queue_vertices.put(self.root)
+            level = 0
+            level_size = 2 ** level
+            previous_index = -1
+            while not queue_vertices.empty():
+                current_vertex = queue_vertices.get()  # getting Vertex from Queue and adding to Queue Vertex's children
+                if current_vertex.left is not None:
+                    queue_vertices.put(current_vertex.left)
+                if current_vertex.right is not None:
+                    queue_vertices.put(current_vertex.right)
+                current_vertex.is_visited = False
 
-            self.form_table()
-            for level in range(len(self.table)):
-                current_index = -1
-                level_size = 2 ** level
-                for vertex in self.table[level]:
-                    output += "_ " * (vertex[0] - 1 - current_index) + vertex[1].info()
-                    current_index = vertex[0]
-                    if current_index + 1 < level_size:
-                        output += ' '
-                if current_index + 1 < level_size:
-                    output += "_ " * (level_size - 2 - current_index) + '_'
-                output += '\n'
+                if level < current_vertex.level: # go to new line
+                    if previous_index + 1 < level_size:
+                        output += "_ " * (level_size - 2 - previous_index) + '_'
+                    level += 1
+                    level_size = 2 ** level
+                    output += '\n'
+                    previous_index = -1
+
+                output += "_ " * (current_vertex.index - 1 - previous_index) + current_vertex.info()
+                if current_vertex.index + 1 < level_size: # if Current was not last on this line -> add ' '
+                    output += ' '
+                previous_index = current_vertex.index
+
+            if previous_index + 1 < level_size:
+                output += "_ " * (level_size - 2 - previous_index) + '_'
+            output += '\n'
+
+
+
+
+
+                # level_size = 2 ** level
+                # for vertex in self.table[level]:
+                #     output += "_ " * (vertex[0] - 1 - current_index) + vertex[1].info()
+                #     current_index = vertex[0]
+                #     if current_index + 1 < level_size:
+                #         output += ' '
+                # if current_index + 1 < level_size:
+                #     output += "_ " * (level_size - 2 - current_index) + '_'
+                # output += '\n'
         return output
 
     def search(self, key):
@@ -235,31 +267,27 @@ class DBT:
                 current_vertex = current_vertex.right
 
 
-    def form_table(self): # tree is not empty, there is check in print()
-        self.table.clear()
+    def give_indexes(self): # tree is not empty, there is check in print() || after this all vertices.is_visited == True
         level = 0
         current_vertex = self.root
         while True:
 
-            if len(self.table) < level + 1:  # increasing tables size
-                self.table.append([])
-
-            if current_vertex.is_visited == self.is_table_passed:  #adding vertex in table
+            if not current_vertex.is_visited:  #adding to vertex its coordinates
                 if level == 0:
                     current_vertex.index = 0
+                    current_vertex.level = 0
                 else:
                     if current_vertex.is_left_child():
                         current_vertex.index = current_vertex.parent.index * 2
                     else:
                         current_vertex.index = current_vertex.parent.index * 2 + 1
-                self.table[level].append([current_vertex.index, current_vertex])
+                    current_vertex.level = current_vertex.parent.level + 1
+                current_vertex.is_visited = True
 
-                current_vertex.is_visited = not current_vertex.is_visited
-
-            if current_vertex.left is not None and current_vertex.left.is_visited == self.is_table_passed:  # tree's passage
+            if current_vertex.left is not None and not current_vertex.left.is_visited:  # tree's passage
                 level += 1
                 current_vertex=current_vertex.left
-            elif current_vertex.right is not None and current_vertex.right.is_visited == self.is_table_passed:
+            elif current_vertex.right is not None and not current_vertex.right.is_visited:
                 level += 1
                 current_vertex=current_vertex.right
             else:
@@ -269,8 +297,6 @@ class DBT:
                 else:
                     break
 
-
-        self.is_table_passed = not self.is_table_passed
 
 
         # if len(self.table) < level + 1:
