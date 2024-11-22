@@ -24,6 +24,7 @@ class Vertex:
         self.key = key
         self.value = value
         self.index = 0
+        self.is_visited = False
         self.left = None
         self.right = None
         self.parent = parent
@@ -39,6 +40,9 @@ class Vertex:
 
     def has_parent(self):
         return self.parent is not None
+
+    def is_left_child(self):
+        return self.parent.left == self
 
 
 def rotate(rotate_vertex):
@@ -85,6 +89,7 @@ class DBT:
         if self.root is not None:
             self.root.parent = None
         self.table = []
+        self.is_table_passed = False
 
     def add(self, key, value):
         if self.root is None:
@@ -95,6 +100,7 @@ class DBT:
                 if key < current_vertex.key:
                     if current_vertex.left is None:
                         current_vertex.left = Vertex(key, value, current_vertex)
+                        current_vertex.left.is_visited = self.is_table_passed
                         self.splay(current_vertex.left)
                         break
                     else:
@@ -103,6 +109,7 @@ class DBT:
                 elif key > current_vertex.key:
                     if current_vertex.right is None:
                         current_vertex.right = Vertex(key, value, current_vertex)
+                        current_vertex.right.is_visited = self.is_table_passed
                         self.splay(current_vertex.right)
                         break
                     else:
@@ -134,7 +141,6 @@ class DBT:
         if self.root is None:
             output = '_'
         else:
-            self.table.clear()
             self.form_table()
             for level in range(len(self.table)):
                 current_index = -1
@@ -227,29 +233,63 @@ class DBT:
                 current_vertex = current_vertex.right
 
 
-    def form_table(self, level = 0, root = None, is_left_child = None): # tree is not empty, there is check in print()
-        current_vertex = root
+    def form_table(self): # tree is not empty, there is check in print()
+        self.table.clear()
+        level = 0
+        current_vertex = self.root
+        stack = [current_vertex]
+        while len(stack) > 0:
+            current_vertex = stack[-1]
 
-        if len(self.table) < level + 1:
-            self.table.append([])
+            if len(self.table) < level + 1:
+                self.table.append([])
 
-        if current_vertex is None:
-            current_vertex = self.root
-            current_vertex.index = 0
-        else:
-            if is_left_child:
-                current_vertex.index = current_vertex.parent.index * 2
+            if current_vertex.is_visited == self.is_table_passed:
+                if level == 0:
+                    current_vertex.index = 0
+                else:
+                    if current_vertex.is_left_child():
+                        current_vertex.index = current_vertex.parent.index * 2
+                    else:
+                        current_vertex.index = current_vertex.parent.index * 2 + 1
+                self.table[level].append([current_vertex.index, current_vertex.info()])
+
+                current_vertex.is_visited = not current_vertex.is_visited
+
+            if current_vertex.left is not None and current_vertex.left.is_visited == self.is_table_passed:
+                stack.append(current_vertex.left)
+                level += 1
+            elif current_vertex.right is not None and current_vertex.right.is_visited == self.is_table_passed:
+                stack.append(current_vertex.right)
+                level += 1
             else:
-                current_vertex.index = current_vertex.parent.index * 2 + 1
-        self.table[level].append([current_vertex.index, current_vertex.info()])
+                stack.pop()
+                level -= 1
 
-        if current_vertex.is_leaf():
-            return 0
-        else:
-            if current_vertex.left is not None:
-                self.form_table(level + 1, current_vertex.left, True)
-            if current_vertex.right is not None:
-                self.form_table(level + 1, current_vertex.right, False)
+
+        self.is_table_passed = not self.is_table_passed
+
+
+        # if len(self.table) < level + 1:
+        #     self.table.append([])
+        #
+        # if current_vertex is None:
+        #     current_vertex = self.root
+        #     current_vertex.index = 0
+        # else:
+        #     if is_left_child:
+        #         current_vertex.index = current_vertex.parent.index * 2
+        #     else:
+        #         current_vertex.index = current_vertex.parent.index * 2 + 1
+        # self.table[level].append([current_vertex.index, current_vertex.info()])
+        #
+        # if current_vertex.is_leaf():
+        #     return 0
+        # else:
+        #     if current_vertex.left is not None:
+        #         self.form_table(level + 1, current_vertex.left, True)
+        #     if current_vertex.right is not None:
+        #         self.form_table(level + 1, current_vertex.right, False)
 
 
     def splay(self, splay_vertex):
